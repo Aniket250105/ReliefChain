@@ -1,0 +1,337 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. Users
+model User {
+  id             String        @id @default(uuid())
+  email          String        @unique
+  passwordHash   String
+  role           String // Web2 RBAC Role
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  
+  // Profile fields
+  fullName       String?
+  phone          String?       // +91XXXXXXXXXX
+  
+  // Account status: ACTIVE, PENDING, REJECTED, SUSPENDED
+  status         String        @default("ACTIVE")
+  
+  // India-specific location
+  state          String?       // Indian State / Union Territory
+  district       String?
+  city           String?
+  pinCode        String?       // 6-digit Indian PIN code
+  
+  // Password reset
+  resetToken     String?       @unique
+  resetTokenHash String?
+  resetTokenExp  DateTime?
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  Donations          Donation[]
+  Distributions      Distribution[]
+  InventoryMovements InventoryMovement[]
+  AuditLogs          AuditLog[]
+  Notifications      Notification[]
+}
+
+// 2. Organizations
+model Organization {
+  id            String   @id @default(uuid())
+  name          String
+  type          String // e.g., NGO, Government, Auditor, Supplier
+  isVerified    Boolean  @default(false)
+  walletAddress String?  @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  Users           User[]
+  Disasters       Disaster[] // As Authority
+  Campaigns       Campaign[] // As NGO
+  Allocations     Allocation[] // As Requester
+  Inventories     Inventory[] // As Location
+  ResourceBatches ResourceBatch[] // As Supplier
+}
+
+// 3. Disasters
+model Disaster {
+  id               String       @id @default(uuid())
+  name             String
+  description      String
+  status           String // Draft, Pending Verification, Verified, Active, Resolved, Archived
+  severity         String       @default("HIGH") // LOW, MEDIUM, HIGH, CRITICAL
+  state            String       @default("")
+  district         String       @default("")
+  city             String       @default("")
+  pinCode          String       @default("")
+  authorityId      String
+  authority        Organization @relation(fields: [authorityId], references: [id])
+  blockchainTxHash String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  Campaigns Campaign[]
+}
+
+// 4. Campaigns
+model Campaign {
+  id               String       @id @default(uuid())
+  disasterId       String
+  disaster         Disaster     @relation(fields: [disasterId], references: [id])
+  ngoId            String
+  ngo              Organization @relation(fields: [ngoId], references: [id])
+  name             String
+  targetAmount     Decimal
+  raisedAmount     Decimal      @default(0)
+  status           String // Pending Approval, Active, Completed
+  blockchainTxHash String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  Donations   Donation[]
+  Allocations Allocation[]
+}
+
+// 5. Donations
+model Donation {
+  id                 String   @id @default(uuid())
+  campaignId         String
+  campaign           Campaign @relation(fields: [campaignId], references: [id])
+  donorId            String?
+  donor              User?    @relation(fields: [donorId], references: [id])
+  amount             Decimal
+  currency           String   @default("INR")
+  blockchainTxHash   String?
+  blockchainLogIndex Int?
+  blockchainChainId  Int?
+  status             String // Pending, Confirmed, Failed
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  ImpactAttributions ImpactAttribution[]
+
+  @@unique([blockchainChainId, blockchainTxHash, blockchainLogIndex])
+}
+
+// 6. Allocations
+model Allocation {
+  id              String       @id @default(uuid())
+  campaignId      String
+  campaign        Campaign     @relation(fields: [campaignId], references: [id])
+  requesterId     String
+  requester       Organization @relation(fields: [requesterId], references: [id])
+  amount          Decimal
+  status          String // DRAFT, PENDING_MULTISIG, APPROVED, EXECUTING, CONFIRMED, FAILED
+  proposalTxHash  String?
+  executionTxHash String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  MultisigApprovals MultisigApproval[]
+  ResourceBatches   ResourceBatch[]
+}
+
+// 7. Multisig_Approvals
+model MultisigApproval {
+  id             String     @id @default(uuid())
+  allocationId   String
+  allocation     Allocation @relation(fields: [allocationId], references: [id])
+  signerWallet   String
+  status         String // Pending, Signed
+  signature      String?
+  approvalTxHash String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([allocationId, signerWallet])
+}
+
+// 8. ResourceBatches
+model ResourceBatch {
+  id               String       @id @default(uuid())
+  allocationId     String
+  allocation       Allocation   @relation(fields: [allocationId], references: [id])
+  supplierId       String
+  supplier         Organization @relation(fields: [supplierId], references: [id])
+  name             String
+  totalQuantity    Float
+  unit             String
+  status           String // Registered, InTransit, Received, Distributed
+  blockchainTxHash String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  Inventories        Inventory[]
+  InventoryMovements InventoryMovement[]
+  Distributions      Distribution[]
+}
+
+// 9. Inventory
+model Inventory {
+  id              String        @id @default(uuid())
+  batchId         String
+  batch           ResourceBatch @relation(fields: [batchId], references: [id])
+  locationId      String
+  location        Organization  @relation(fields: [locationId], references: [id])
+  currentQuantity Decimal
+  lastUpdated     DateTime      @updatedAt
+}
+
+// 10. InventoryMovements
+model InventoryMovement {
+  id           String        @id @default(uuid())
+  batchId      String
+  batch        ResourceBatch @relation(fields: [batchId], references: [id])
+  fromLocation String? // nullable if it's the initial receipt
+  toLocation   String
+  quantity     Decimal
+  movementType String
+  actorId      String
+  actor        User          @relation(fields: [actorId], references: [id])
+  timestamp    DateTime      @default(now())
+}
+
+// 11. Distributions
+model Distribution {
+  id               String        @id @default(uuid())
+  batchId          String
+  batch            ResourceBatch @relation(fields: [batchId], references: [id])
+  officerId        String
+  officer          User          @relation(fields: [officerId], references: [id])
+  quantity         Decimal
+  beneficiaryCount Int
+  blockchainTxHash String?
+  logIndex         Int?          // Added for exact blockchain event correlation
+  idempotencyKey   String?       @unique // Added for API idempotency
+  status           String // Pending, Executing, Confirmed, Failed
+  createdAt        DateTime      @default(now())
+
+  ImpactAttributions ImpactAttribution[]
+}
+
+// 12. Evidence
+model Evidence {
+  id                String   @id @default(uuid())
+  fileUrl           String
+  contentHashSha256 String
+  ipfsCid           String
+  blockchainCidBytes32 String?
+  entityType        String // e.g., ResourceBatch, Distribution
+  entityId          String // Application-level polymorphic relation
+  createdAt         DateTime @default(now())
+
+  @@index([entityType, entityId])
+}
+
+// 13. AI_Alerts
+model AIAlert {
+  id                  String   @id @default(uuid())
+  entityType          String // e.g., Donation, Allocation, Distribution
+  entityId            String
+  triggerEventId      String   @default("direct") // Tracks the exact event/action that triggered this evaluation
+  anomalyScore        Float?
+  modelAvailable      Boolean  @default(true)
+  configuredThreshold Float    @default(-0.5)
+  riskLevel           String // LOW, MEDIUM, HIGH, CRITICAL
+  reasonCodes         String[]
+  modelVersion        String   @default("isolation-forest-v1")
+  featureSetVersion   String   @default("feature-set-v1")
+  status              String   @default("NEW") // NEW, INVESTIGATING, RESOLVED_FALSE_POSITIVE, ESCALATED
+  idempotencyKey      String?  @unique // Added for API idempotency on review
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([entityType, entityId, triggerEventId])
+}
+
+// 14. Impact_Attribution
+model ImpactAttribution {
+  id              String       @id @default(uuid())
+  donationId      String
+  donation        Donation     @relation(fields: [donationId], references: [id])
+  distributionId  String
+  distribution    Distribution @relation(fields: [distributionId], references: [id])
+  attributedUnits Float
+  createdAt       DateTime     @default(now())
+}
+
+// 15. Blockchain_Events
+model BlockchainEvent {
+  id              String    @id @default(uuid())
+  chainId         Int
+  eventName       String
+  contractAddress String
+  transactionHash String
+  blockNumber     Int
+  blockHash       String
+  logIndex        Int
+  payload         Json // Decoded event data
+  rawEvent        Json? // Raw event data
+  status          String // PENDING, PROCESSED, FAILED
+  retryCount      Int       @default(0)
+  nextRetryAt     DateTime?
+  errorDetails    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([chainId, transactionHash, logIndex])
+}
+
+// 16. Notifications
+model Notification {
+  id              String   @id @default(uuid())
+  recipientId     String
+  recipient       User     @relation(fields: [recipientId], references: [id])
+  type            String   // e.g., MULTISIG_APPROVAL_REQUIRED
+  title           String
+  message         String
+  entityType      String   // e.g., Allocation
+  entityId        String
+  status          String   @default("UNREAD") // UNREAD, READ
+  deliveryStatus  String   @default("PENDING") // PENDING, SENT, FAILED
+  readAt          DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Duplicate protection via deterministic idempotency constraint per recipient per entity event
+  idempotencyKey  String   @unique
+  apiIdempotencyKey String? @unique // Added for PATCH API idempotency
+
+  @@index([recipientId, status])
+  @@index([recipientId, createdAt])
+  @@index([entityType, entityId])
+}
+
+// 16. Indexer_State
+model IndexerState {
+  id                     String   @id @default(uuid())
+  chainId                Int      @unique
+  lastProcessedBlock     Int
+  lastProcessedBlockHash String
+  updatedAt              DateTime @updatedAt
+}
+
+// 16. Supporting Entity: AuditLog (Web2 Audit Trail)
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String? // Can be null for unauthenticated/system actions
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  status     String // e.g., Success, Failure
+  metadata   Json? // Excludes sensitive data (no passwords/tokens)
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+}

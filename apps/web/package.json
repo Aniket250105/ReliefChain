@@ -1,0 +1,33 @@
+{
+  "name": "@reliefchain/web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "d3-geo": "^3.1.1",
+    "d3-scale": "^4.0.2",
+    "ethers": "^6.17.0",
+    "next": "^14.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.6.1",
+    "react-simple-maps": "^5.0.5"
+  },
+  "devDependencies": {
+    "@reliefchain/config": "*",
+    "@reliefchain/shared-types": "*",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/uuid": "^10.0.0",
+    "autoprefixer": "^10.6.1",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.0.0"
+  }
+}
