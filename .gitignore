@@ -54,3 +54,19 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Internal Presentation, Viva & Demo Docs
+EVALUATOR_GUIDE.md
+FINAL_PRESENTATION_OUTLINE.md
+Final_Demo_Readiness_Report.md
+LIVE_DEMO_SCRIPT.md
+PRESENTATION_SCRIPT.md
+PROJECT_60_SECOND_EXPLANATION.md
+PROJECT_CONTEXT.md
+Phase4.5_Report.md
+TECHNICAL_TERMINOLOGY.md
+VIVA_QA.md
+
+# Root Development Helper Scripts
+/*.py
+test-login.js
