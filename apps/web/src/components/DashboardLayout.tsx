@@ -143,7 +143,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden relative">
+      <div id="main-scroll-container" className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden relative">
         {user ? (
           <TopHeader 
             user={user} 
@@ -169,7 +169,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <RoleKPIs role={user.role} />
               </>
             )}
-            <div className="animate-fade-in-quick w-full">
+            <div className="animate-fade-in w-full">
               {children}
             </div>
           </div>

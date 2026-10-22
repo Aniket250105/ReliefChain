@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { INDIAN_STATES_UTS } from '@reliefchain/shared-types';
 import Card from '../../../components/ui/Card';
@@ -9,6 +10,7 @@ import toast from 'react-hot-toast';
 import { getCachedData, isCacheFresh, setCachedData, invalidateCache, subscribeToCacheInvalidation } from '../../../lib/api-cache';
 
 export default function AuthorityDashboard() {
+  const [mounted, setMounted] = useState(false);
   const cachedDisasters = getCachedData<any[]>('authority_disasters');
   const [disasters, setDisasters] = useState<any[]>(() => cachedDisasters || []);
   const [loading, setLoading] = useState(() => !cachedDisasters || cachedDisasters.length === 0);
@@ -33,6 +35,17 @@ export default function AuthorityDashboard() {
   const [disasterToDelete, setDisasterToDelete] = useState<any | null>(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
+  // Autoscroll helper to view the full card/menu smoothly
+  const scrollToTop = () => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const mainContainer = document.getElementById('main-scroll-container') || document.querySelector('.overflow-y-auto');
+      if (mainContainer) {
+        mainContainer.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  };
+
   const fetchDisasters = async () => {
     try {
       const res = await fetch('/api/disasters', { credentials: 'include' });
@@ -49,6 +62,7 @@ export default function AuthorityDashboard() {
   };
 
   useEffect(() => {
+    setMounted(true);
     try {
       const stored = localStorage.getItem('user');
       if (stored) {
@@ -74,6 +88,13 @@ export default function AuthorityDashboard() {
       clearInterval(interval);
     };
   }, []);
+
+  // Autoscroll to top whenever Edit or Delete modal is triggered
+  useEffect(() => {
+    if (editingDisaster || disasterToDelete) {
+      scrollToTop();
+    }
+  }, [editingDisaster, disasterToDelete]);
 
   const isSystemAdmin = currentUser?.role === 'SYSTEM_ADMIN';
 
@@ -149,6 +170,12 @@ export default function AuthorityDashboard() {
       city: disaster.city || '',
       pinCode: disaster.pinCode || ''
     });
+    scrollToTop();
+  };
+
+  const handleStartDelete = (disaster: any) => {
+    setDisasterToDelete(disaster);
+    scrollToTop();
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -308,7 +335,7 @@ export default function AuthorityDashboard() {
                           {/* Delete Feature: Administrative feature for System Admin to remove mistaken declarations */}
                           {isSystemAdmin && (
                             <button
-                              onClick={() => setDisasterToDelete(d)}
+                              onClick={() => handleStartDelete(d)}
                               className="px-2.5 py-1 text-xs font-semibold rounded-lg text-terracotta bg-terracotta/10 hover:bg-terracotta hover:text-white border border-terracotta/20 transition-all flex items-center gap-1 cursor-pointer"
                               title="Permanently remove disaster declaration done by mistake"
                             >
@@ -615,13 +642,16 @@ export default function AuthorityDashboard() {
       </div>
 
       {/* MODAL 1: EDIT DISASTER MODAL (For correcting mistakes in declaration) */}
-      {editingDisaster && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-forest/60 backdrop-blur-xs animate-fade-in">
+      {editingDisaster && mounted && createPortal(
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-forest/60 backdrop-blur-xs animate-fade-in"
+          onClick={() => setEditingDisaster(null)}
+        >
           <div 
-            className="bg-white rounded-2xl shadow-2xl border border-forest/15 max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-5"
+            className="bg-white rounded-2xl shadow-2xl border border-forest/15 max-w-lg w-full max-h-[88vh] flex flex-col p-6 overflow-hidden animate-scale-in"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-forest/10">
+            <div className="flex items-center justify-between pb-3 border-b border-forest/10 shrink-0">
               <div className="flex items-center gap-2.5">
                 <span className="text-xl">✏️</span>
                 <div>
@@ -630,6 +660,7 @@ export default function AuthorityDashboard() {
                 </div>
               </div>
               <button 
+                type="button"
                 onClick={() => setEditingDisaster(null)}
                 className="w-8 h-8 rounded-full bg-forest/5 hover:bg-forest/10 text-forest/70 hover:text-forest flex items-center justify-center transition-colors text-sm font-bold cursor-pointer"
               >
@@ -637,118 +668,120 @@ export default function AuthorityDashboard() {
               </button>
             </div>
 
-            <form onSubmit={handleUpdate} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1">
-                  Disaster Name *
-                </label>
-                <input 
-                  type="text" 
-                  required
-                  value={editingDisaster.name}
-                  onChange={e => setEditingDisaster({...editingDisaster, name: e.target.value})}
-                  className="w-full bg-sand/30 border border-forest/20 rounded-xl px-4 py-2.5 text-forest text-sm focus:outline-none focus:border-forest focus:ring-1 focus:ring-forest transition-all"
-                  placeholder="e.g. Karnataka Flood Relief"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1">
-                  State / Union Territory *
-                </label>
-                <select
-                  required
-                  value={editingDisaster.state}
-                  onChange={e => setEditingDisaster({...editingDisaster, state: e.target.value})}
-                  className="w-full bg-sand/30 border border-forest/20 rounded-xl px-4 py-2.5 text-forest text-sm focus:outline-none focus:border-forest focus:ring-1 focus:ring-forest transition-all"
-                >
-                  {INDIAN_STATES_UTS.map(state => (
-                    <option key={state} value={state}>{state}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1">
-                  District *
-                </label>
-                <input 
-                  type="text" 
-                  required
-                  value={editingDisaster.district}
-                  onChange={e => setEditingDisaster({...editingDisaster, district: e.target.value})}
-                  className="w-full bg-sand/30 border border-forest/20 rounded-xl px-4 py-2.5 text-forest text-sm focus:outline-none focus:border-forest focus:ring-1 focus:ring-forest transition-all"
-                  placeholder="e.g. Bangalore Urban"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+            <form onSubmit={handleUpdate} className="flex-1 flex flex-col overflow-hidden pt-3 min-h-0">
+              <div className="space-y-4 overflow-y-auto pr-1 flex-1 pb-2">
                 <div>
                   <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1">
-                    City / Place *
+                    Disaster Name *
                   </label>
                   <input 
                     type="text" 
                     required
-                    value={editingDisaster.city}
-                    onChange={e => setEditingDisaster({...editingDisaster, city: e.target.value})}
+                    value={editingDisaster.name}
+                    onChange={e => setEditingDisaster({...editingDisaster, name: e.target.value})}
                     className="w-full bg-sand/30 border border-forest/20 rounded-xl px-4 py-2.5 text-forest text-sm focus:outline-none focus:border-forest focus:ring-1 focus:ring-forest transition-all"
-                    placeholder="e.g. Bengaluru"
+                    placeholder="e.g. Karnataka Flood Relief"
                   />
                 </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1">
-                    PIN Code *
+                    State / Union Territory *
+                  </label>
+                  <select
+                    required
+                    value={editingDisaster.state}
+                    onChange={e => setEditingDisaster({...editingDisaster, state: e.target.value})}
+                    className="w-full bg-sand/30 border border-forest/20 rounded-xl px-4 py-2.5 text-forest text-sm focus:outline-none focus:border-forest focus:ring-1 focus:ring-forest transition-all"
+                  >
+                    {INDIAN_STATES_UTS.map(state => (
+                      <option key={state} value={state}>{state}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1">
+                    District *
                   </label>
                   <input 
                     type="text" 
                     required
-                    pattern="[0-9]{6}"
-                    title="6-digit Indian PIN Code"
-                    value={editingDisaster.pinCode}
-                    onChange={e => setEditingDisaster({...editingDisaster, pinCode: e.target.value})}
+                    value={editingDisaster.district}
+                    onChange={e => setEditingDisaster({...editingDisaster, district: e.target.value})}
                     className="w-full bg-sand/30 border border-forest/20 rounded-xl px-4 py-2.5 text-forest text-sm focus:outline-none focus:border-forest focus:ring-1 focus:ring-forest transition-all"
-                    placeholder="e.g. 560001"
+                    placeholder="e.g. Bangalore Urban"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1">
+                      City / Place *
+                    </label>
+                    <input 
+                      type="text" 
+                      required
+                      value={editingDisaster.city}
+                      onChange={e => setEditingDisaster({...editingDisaster, city: e.target.value})}
+                      className="w-full bg-sand/30 border border-forest/20 rounded-xl px-4 py-2.5 text-forest text-sm focus:outline-none focus:border-forest focus:ring-1 focus:ring-forest transition-all"
+                      placeholder="e.g. Bengaluru"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1">
+                      PIN Code *
+                    </label>
+                    <input 
+                      type="text" 
+                      required
+                      pattern="[0-9]{6}"
+                      title="6-digit Indian PIN Code"
+                      value={editingDisaster.pinCode}
+                      onChange={e => setEditingDisaster({...editingDisaster, pinCode: e.target.value})}
+                      className="w-full bg-sand/30 border border-forest/20 rounded-xl px-4 py-2.5 text-forest text-sm focus:outline-none focus:border-forest focus:ring-1 focus:ring-forest transition-all"
+                      placeholder="e.g. 560001"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1.5">
+                    Severity Level *
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map(sev => (
+                      <button
+                        type="button"
+                        key={sev}
+                        onClick={() => setEditingDisaster({...editingDisaster, severity: sev})}
+                        className={`py-2 px-1 text-center rounded-lg text-xs font-bold border transition-all ${
+                          editingDisaster.severity === sev 
+                            ? sev === 'CRITICAL' || sev === 'HIGH' ? 'bg-terracotta text-white border-terracotta' : 'bg-gold text-forest border-gold'
+                            : 'bg-white text-forest/60 border-forest/20 hover:border-forest/50'
+                        }`}
+                      >
+                        {sev}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1">
+                    Description / Situation Details
+                  </label>
+                  <textarea 
+                    rows={2}
+                    value={editingDisaster.description}
+                    onChange={e => setEditingDisaster({...editingDisaster, description: e.target.value})}
+                    className="w-full bg-sand/30 border border-forest/20 rounded-xl px-4 py-2 text-forest text-sm focus:outline-none focus:border-forest focus:ring-1 focus:ring-forest transition-all"
+                    placeholder="Details of the affected zone and relief requirements..."
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1.5">
-                  Severity Level *
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map(sev => (
-                    <button
-                      type="button"
-                      key={sev}
-                      onClick={() => setEditingDisaster({...editingDisaster, severity: sev})}
-                      className={`py-2 px-1 text-center rounded-lg text-xs font-bold border transition-all ${
-                        editingDisaster.severity === sev 
-                          ? sev === 'CRITICAL' || sev === 'HIGH' ? 'bg-terracotta text-white border-terracotta' : 'bg-gold text-forest border-gold'
-                          : 'bg-white text-forest/60 border-forest/20 hover:border-forest/50'
-                      }`}
-                    >
-                      {sev}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1">
-                  Description / Situation Details
-                </label>
-                <textarea 
-                  rows={2}
-                  value={editingDisaster.description}
-                  onChange={e => setEditingDisaster({...editingDisaster, description: e.target.value})}
-                  className="w-full bg-sand/30 border border-forest/20 rounded-xl px-4 py-2 text-forest text-sm focus:outline-none focus:border-forest focus:ring-1 focus:ring-forest transition-all"
-                  placeholder="Details of the affected zone and relief requirements..."
-                />
-              </div>
-
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-3 border-t border-forest/10 shrink-0">
                 <Button 
                   type="button" 
                   variant="outline" 
@@ -769,12 +802,16 @@ export default function AuthorityDashboard() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MODAL 2: DELETE DISASTER CONFIRMATION MODAL (Administrative purge for mistaken declarations) */}
-      {disasterToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-forest/60 backdrop-blur-xs animate-fade-in">
+      {disasterToDelete && mounted && createPortal(
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-forest/60 backdrop-blur-xs animate-fade-in"
+          onClick={() => setDisasterToDelete(null)}
+        >
           <div 
             className="bg-white rounded-2xl shadow-2xl border border-forest/15 max-w-md w-full p-6 space-y-5 animate-scale-in"
             onClick={e => e.stopPropagation()}
@@ -826,7 +863,8 @@ export default function AuthorityDashboard() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
