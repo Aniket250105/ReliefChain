@@ -286,11 +286,11 @@ export default function AuthorityDashboard() {
                           {/* Edit Feature: Available for Government Authority and System Admin to fix mistaken declarations */}
                           <button
                             onClick={() => handleStartEdit(d)}
-                            className="px-2.5 py-1 text-xs font-semibold rounded-lg text-forest bg-forest/5 hover:bg-forest/15 border border-forest/20 transition-all flex items-center gap-1 cursor-pointer"
-                            title="Edit disaster details if declared with mistakes"
+                            className="p-1.5 text-xs font-semibold rounded-lg text-forest bg-forest/5 hover:bg-forest/15 border border-forest/20 transition-all flex items-center justify-center cursor-pointer"
+                            title="Edit disaster details"
+                            aria-label="Edit disaster details"
                           >
                             <span>✏️</span>
-                            <span>Edit</span>
                           </button>
 
                           {/* Delete Feature: Administrative feature for System Admin to remove mistaken declarations */}
