@@ -232,56 +232,68 @@ export default function AuthorityDashboard() {
               {disasters.length} {disasters.length === 1 ? 'Record' : 'Records'}
             </span>
           </div>
-          <div className="overflow-x-auto w-full">
-            <table className="w-full text-left text-sm">
+          <div className="w-full overflow-hidden">
+            <table className="w-full text-left text-sm table-auto">
               <thead>
                 <tr className="border-b border-forest/10 text-forest/60">
-                  <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">ID</th>
-                  <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">Disaster Name</th>
-                  <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">Severity</th>
-                  <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">Status</th>
-                  <th className="px-3 sm:px-4 py-2.5 font-semibold text-right whitespace-nowrap">Actions</th>
+                  <th className="px-2.5 sm:px-3 py-2.5 font-semibold text-xs text-forest/60 uppercase whitespace-nowrap w-16">ID</th>
+                  <th className="px-2.5 sm:px-3 py-2.5 font-semibold text-xs text-forest/60 uppercase whitespace-nowrap">Disaster Name</th>
+                  <th className="px-2 py-2.5 font-semibold text-xs text-forest/60 uppercase whitespace-nowrap text-center">Severity</th>
+                  <th className="px-2 py-2.5 font-semibold text-xs text-forest/60 uppercase whitespace-nowrap text-center">Status</th>
+                  <th className="px-2.5 sm:px-3 py-2.5 font-semibold text-xs text-forest/60 uppercase text-right whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-forest/5">
                 {loading ? (
-                  <tr><td colSpan={5} className="px-3 sm:px-4 py-6 text-center text-forest/50">Loading disasters...</td></tr>
+                  <tr><td colSpan={5} className="px-3 py-6 text-center text-forest/50">Loading disasters...</td></tr>
                 ) : disasters.length === 0 ? (
-                  <tr><td colSpan={5} className="px-3 sm:px-4 py-6 text-center text-forest/50">No declared disasters found.</td></tr>
+                  <tr><td colSpan={5} className="px-3 py-6 text-center text-forest/50">No declared disasters found.</td></tr>
                 ) : (
                   disasters.map(d => {
                     const locationText = [d.city || d.district, d.state].filter(Boolean).join(', ');
                     return (
                       <tr key={d.id} className="hover:bg-sand/30 transition-colors">
-                        <td className="px-3 sm:px-4 py-2.5 font-mono text-xs text-forest/70 uppercase whitespace-nowrap">DIS-{d.id.substring(0,3)}</td>
-                        <td className="px-3 sm:px-4 py-2.5 whitespace-nowrap">
-                          <div className="flex flex-col">
-                            <span className="font-medium text-forest">{d.name}</span>
-                            <span className="text-xs text-forest/60 mt-0.5">{locationText || 'All Districts'}</span>
+                        <td className="px-2.5 sm:px-3 py-2.5 font-mono text-xs text-forest/70 uppercase whitespace-nowrap">DIS-{d.id.substring(0,3)}</td>
+                        <td className="px-2.5 sm:px-3 py-2.5">
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-semibold text-forest text-xs sm:text-sm truncate">{d.name}</span>
+                            <span className="text-[11px] text-forest/60 mt-0.5 truncate">{locationText || 'All Districts'}</span>
                           </div>
                         </td>
-                      <td className="px-3 sm:px-4 py-2.5 whitespace-nowrap">
-                        <Badge variant={d.severity.toLowerCase() as any}>{d.severity}</Badge>
-                      </td>
-                      <td className="px-3 sm:px-4 py-2.5 whitespace-nowrap">
-                        <Badge variant={d.status === 'ACTIVE' ? 'success' : 'warning'}>
-                          {d.status === 'ACTIVE' ? 'Ongoing' : d.status.replace('_', ' ')}
-                        </Badge>
-                      </td>
-                      <td className="px-3 sm:px-4 py-2.5 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-2">
-                          {/* Verification status / action */}
-                          {d.status === 'PENDING_VERIFICATION' ? (
-                            isSystemAdmin ? (
-                              <Badge variant="warning">Pending</Badge>
+                        <td className="px-2 py-2.5 whitespace-nowrap text-center">
+                          <Badge variant={d.severity.toLowerCase() as any} className="text-[10px] px-2 py-0.5 font-semibold tracking-normal">
+                            {d.severity}
+                          </Badge>
+                        </td>
+                        <td className="px-2 py-2.5 whitespace-nowrap text-center">
+                          <Badge 
+                            variant={d.status === 'ACTIVE' ? 'success' : 'warning'}
+                            className="text-[10px] px-1.5 sm:px-2 py-0.5 font-semibold tracking-tight whitespace-nowrap"
+                          >
+                            {d.status === 'PENDING_VERIFICATION' ? (
+                              <>
+                                <span className="hidden xl:inline">Pending Verification</span>
+                                <span className="xl:hidden">Pending</span>
+                              </>
                             ) : (
-                              <Button variant="accent" onClick={() => handleVerify(d.id)} className="px-2.5 py-1 text-xs">
-                                Verify
-                              </Button>
-                            )
-                          ) : (
-                            <Badge variant="success">Verified</Badge>
-                          )}
+                              d.status === 'ACTIVE' ? 'Ongoing' : d.status.replace(/_/g, ' ')
+                            )}
+                          </Badge>
+                        </td>
+                        <td className="px-2.5 sm:px-3 py-2.5 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5 sm:gap-2">
+                            {/* Verification status / action */}
+                            {d.status === 'PENDING_VERIFICATION' ? (
+                              isSystemAdmin ? (
+                                <Badge variant="warning" className="text-[10px] px-2 py-0.5">Pending</Badge>
+                              ) : (
+                                <Button variant="accent" onClick={() => handleVerify(d.id)} className="px-2.5 py-1 text-xs">
+                                  Verify
+                                </Button>
+                              )
+                            ) : (
+                              <Badge variant="success" className="text-[10px] px-2 py-0.5">Verified</Badge>
+                            )}
 
                           {/* Edit Feature: Available for Government Authority and System Admin to fix mistaken declarations */}
                           <button
