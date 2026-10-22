@@ -309,17 +309,11 @@ export default function AuthorityDashboard() {
                         </td>
                         <td className="px-2.5 sm:px-3 py-2.5 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5 sm:gap-2">
-                            {/* Verification status / action */}
-                            {d.status === 'PENDING_VERIFICATION' ? (
-                              isSystemAdmin ? (
-                                <Badge variant="warning" className="text-[10px] px-2 py-0.5">Pending</Badge>
-                              ) : (
-                                <Button variant="accent" onClick={() => handleVerify(d.id)} className="px-2.5 py-1 text-xs">
-                                  Verify
-                                </Button>
-                              )
-                            ) : (
-                              <Badge variant="success" className="text-[10px] px-2 py-0.5">Verified</Badge>
+                            {/* Verification action: Only shown for Authority user when pending verification */}
+                            {!isSystemAdmin && d.status === 'PENDING_VERIFICATION' && (
+                              <Button variant="accent" onClick={() => handleVerify(d.id)} className="px-2.5 py-1 text-xs">
+                                Verify
+                              </Button>
                             )}
 
                           {/* Edit Feature: Available for Government Authority and System Admin to fix mistaken declarations */}
