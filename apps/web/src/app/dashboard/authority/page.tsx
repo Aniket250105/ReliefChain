@@ -238,7 +238,6 @@ export default function AuthorityDashboard() {
                 <tr className="border-b border-forest/10 text-forest/60">
                   <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">ID</th>
                   <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">Disaster Name</th>
-                  <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">Location</th>
                   <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">Severity</th>
                   <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">Status</th>
                   <th className="px-3 sm:px-4 py-2.5 font-semibold text-right whitespace-nowrap">Actions</th>
@@ -246,20 +245,21 @@ export default function AuthorityDashboard() {
               </thead>
               <tbody className="divide-y divide-forest/5">
                 {loading ? (
-                  <tr><td colSpan={6} className="px-3 sm:px-4 py-6 text-center text-forest/50">Loading disasters...</td></tr>
+                  <tr><td colSpan={5} className="px-3 sm:px-4 py-6 text-center text-forest/50">Loading disasters...</td></tr>
                 ) : disasters.length === 0 ? (
-                  <tr><td colSpan={6} className="px-3 sm:px-4 py-6 text-center text-forest/50">No declared disasters found.</td></tr>
+                  <tr><td colSpan={5} className="px-3 sm:px-4 py-6 text-center text-forest/50">No declared disasters found.</td></tr>
                 ) : (
-                  disasters.map(d => (
-                    <tr key={d.id} className="hover:bg-sand/30 transition-colors">
-                      <td className="px-3 sm:px-4 py-2.5 font-mono text-xs text-forest/70 uppercase whitespace-nowrap">DIS-{d.id.substring(0,3)}</td>
-                      <td className="px-3 sm:px-4 py-2.5 font-medium text-forest whitespace-nowrap">{d.name}</td>
-                      <td className="px-3 sm:px-4 py-2.5 whitespace-nowrap">
-                        <div className="flex flex-col">
-                          <span className="text-forest font-medium">{d.state}</span>
-                          <span className="text-xs text-forest/60">{d.city || d.district || 'All Districts'}</span>
-                        </div>
-                      </td>
+                  disasters.map(d => {
+                    const locationText = [d.city || d.district, d.state].filter(Boolean).join(', ');
+                    return (
+                      <tr key={d.id} className="hover:bg-sand/30 transition-colors">
+                        <td className="px-3 sm:px-4 py-2.5 font-mono text-xs text-forest/70 uppercase whitespace-nowrap">DIS-{d.id.substring(0,3)}</td>
+                        <td className="px-3 sm:px-4 py-2.5 whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-forest">{d.name}</span>
+                            <span className="text-xs text-forest/60 mt-0.5">{locationText || 'All Districts'}</span>
+                          </div>
+                        </td>
                       <td className="px-3 sm:px-4 py-2.5 whitespace-nowrap">
                         <Badge variant={d.severity.toLowerCase() as any}>{d.severity}</Badge>
                       </td>
@@ -307,7 +307,8 @@ export default function AuthorityDashboard() {
                         </div>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
